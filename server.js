@@ -13,12 +13,12 @@ const app = express();
 const port = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET || 'arbah-min-baytak-secret-key-2026';
 
-// بيانات البوت الجديد ومعرف حسابك
+// بيانات البوت ومعرف حسابك
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8236604963:AAEDTid3y1suHB_WR_lqmhTuz9-224sFa0E';
-const TELEGRAM_ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '7401854621';
+const TELEGRAM_ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '8866804648';
 const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
-// إعداد Upstash مع دعم التخزين المؤقت
+// إعداد الاتصال بقاعدة بيانات Upstash
 let redis;
 if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
   redis = new Redis({
@@ -73,7 +73,6 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
   };
 }
 
-// استقبال الصور
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
@@ -95,9 +94,10 @@ function hashNationalId(id) {
   return crypto.createHash('sha256').update(id.trim()).digest('hex');
 }
 
+// دالة التحقق بعد تصحيح استخراج التوكن
 async function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ');
+  const token = authHeader && (authHeader.split(' ') || authHeader);
   if (!token) return res.status(401).json({ error: 'يرجى تسجيل الدخول أولاً' });
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
@@ -107,7 +107,47 @@ async function authenticateToken(req, res, next) {
   });
 }
 
-// --- 1. مسار التسجيل ورفع الصور ---
+// تهيئة المهام الافتراضية
+async function initSampleTasks() {
+  try {
+    const taskCount = await redis.scard('active_task_ids');
+    if (taskCount === 0) {
+      const sampleTasks = [
+        {
+          id: 'task_1',
+          title: 'الانضمام إلى قناة تليجرام الرسمية',
+          description: 'انضم للقناة وخذ لقطة شاشة تؤكد انضمامك.',
+          reward: 3000,
+          proof_type: 'screenshot',
+        },
+        {
+          id: 'task_2',
+          title: 'الاشتراك بقناة يوتيوب وتفعيل الجرس',
+          description: 'اشترك بالقناة وضع لايك على آخر فيديو وأرسل لقطة شاشة.',
+          reward: 5000,
+          proof_type: 'screenshot',
+        },
+        {
+          id: 'task_3',
+          title: 'مشاركة رابط الموقع على فيسبوك',
+          description: 'انشر رابط الموقع في مجموعة وضع رابط المنشور كإثبات.',
+          reward: 4000,
+          proof_type: 'text_url',
+        },
+      ];
+
+      for (const t of sampleTasks) {
+        await redis.hset(`task:${t.id}`, t);
+        await redis.sadd('active_task_ids', t.id);
+      }
+    }
+  } catch (err) {
+    console.error('Task init error:', err);
+  }
+}
+initSampleTasks();
+
+// --- 1. تسجيل الحساب ورفع الهوية ---
 app.post('/api/register', upload.fields([
   { name: 'id_front', maxCount: 1 },
   { name: 'id_back', maxCount: 1 },
@@ -121,7 +161,6 @@ app.post('/api/register', upload.fields([
       return res.status(400).json({ error: 'جميع الحقول مطلوبة.' });
     }
 
-    // تحديد الصور المرفوعة بمرونة
     const frontImg = (req.files && (req.files['id_front']?.[0] || req.files['id_card']?.[0])) || null;
     const backImg = (req.files && req.files['id_back']?.[0]) || null;
     const selfieImg = (req.files && req.files['selfie']?.[0]) || null;
@@ -132,7 +171,6 @@ app.post('/api/register', upload.fields([
 
     const nationalIdHash = hashNationalId(national_id);
 
-    // فحص منع التكرار
     const isIdTaken = await redis.sismember('registered_national_ids', nationalIdHash);
     if (isIdTaken) {
       return res.status(400).json({ error: 'عذراً، هذا الرقم الوطني مسجل مسبقاً في النظام لمنع تكرار الحسابات.' });
@@ -160,7 +198,6 @@ app.post('/api/register', upload.fields([
     await redis.sadd('registered_national_ids', nationalIdHash);
     await redis.hset('users_by_phone', { [phone.trim()]: userId });
 
-    // إرسال الصورة 1: واجهة الهوية مع أزرار القبول والرفض
     const frontCaption = `📋 <b>طلب تحقق جديد - موقع أربح من بيتك</b>\n\n` +
                          `👤 <b>الاسم:</b> ${escapeHtml(username)}\n` +
                          `📱 <b>الهاتف:</b> ${escapeHtml(phone)}\n` +
@@ -184,7 +221,6 @@ app.post('/api/register', upload.fields([
 
     await axios.post(`${TELEGRAM_API}/sendPhoto`, formFront, { headers: formFront.getHeaders() });
 
-    // إرسال الصورة 2 (الوجه الخلفي إن وجدت)
     if (backImg) {
       const formBack = new FormData();
       formBack.append('chat_id', TELEGRAM_ADMIN_CHAT_ID);
@@ -194,7 +230,6 @@ app.post('/api/register', upload.fields([
       await axios.post(`${TELEGRAM_API}/sendPhoto`, formBack, { headers: formBack.getHeaders() });
     }
 
-    // إرسال الصورة 3 (السيلفي إن وجدت)
     if (selfieImg) {
       const formSelfie = new FormData();
       formSelfie.append('chat_id', TELEGRAM_ADMIN_CHAT_ID);
@@ -211,11 +246,11 @@ app.post('/api/register', upload.fields([
 
   } catch (err) {
     console.error('Telegram/Registration Error:', err.response?.data || err.message);
-    res.status(500).json({ error: 'حدث خطأ أثناء إرسال البيانات إلى تليجرام، تأكد من الضغط على Start للبوت أولاً.' });
+    res.status(500).json({ error: 'حدث خطأ أثناء إرسال البيانات إلى تليجرام.' });
   }
 });
 
-// باقي المسارات
+// --- 2. تسجيل الدخول ---
 app.post('/api/login', async (req, res) => {
   try {
     const { phone, password } = req.body;
@@ -243,6 +278,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// --- 3. جلب بيانات الحساب ورصيده ---
 app.get('/api/me', authenticateToken, async (req, res) => {
   try {
     const user = await redis.hgetall(`user:${req.user.id}`);
@@ -252,6 +288,7 @@ app.get('/api/me', authenticateToken, async (req, res) => {
   }
 });
 
+// --- 4. جلب المهام ---
 app.get('/api/tasks', authenticateToken, async (req, res) => {
   try {
     const taskIds = await redis.smembers('active_task_ids');
@@ -266,6 +303,7 @@ app.get('/api/tasks', authenticateToken, async (req, res) => {
   }
 });
 
+// --- 5. إرسال إثبات تنفيذ مهمة ---
 app.post('/api/tasks/:taskId/submit', authenticateToken, upload.single('screenshot'), async (req, res) => {
   try {
     const { taskId } = req.params;
@@ -323,6 +361,7 @@ app.post('/api/tasks/:taskId/submit', authenticateToken, upload.single('screensh
   }
 });
 
+// --- 6. طلب سحب الرصيد ---
 app.post('/api/withdraw', authenticateToken, async (req, res) => {
   try {
     const { amount, method, destination } = req.body;
@@ -375,7 +414,7 @@ app.post('/api/withdraw', authenticateToken, async (req, res) => {
   }
 });
 
-// أزرار تليجرام
+// --- 7. معالجة أزرار تليجرام ---
 app.post('/api/telegram-webhook', async (req, res) => {
   try {
     const update = req.body;
@@ -453,4 +492,4 @@ app.post('/api/telegram-webhook', async (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
-      
+         
