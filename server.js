@@ -10,7 +10,7 @@ const path = require('path');
 require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET || 'arbah-min-baytak-secret-key-2026';
 
 // بيانات البوت وتليجرام مدمجة مباشرة
@@ -26,7 +26,6 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
     token: process.env.UPSTASH_REDIS_REST_TOKEN,
   });
 } else {
-  // تخزين مؤقت في الذاكرة في حال لم تكن بيانات Upstash مضافة بعد، لمنع توقف الخادم
   console.warn('تنبيه: لم يتم العثور على متغيرات Upstash، يتم استخدام الذاكرة المؤقتة مؤقتاً.');
   const memoryStore = new Map();
   const setStore = new Map();
@@ -75,24 +74,30 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
   };
 }
 
-// استقبال الصور في الذاكرة لتمريرها فوراً إلى تليجرام
+// استقبال الصور في الذاكرة لتمريرها لتليجرام
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
 });
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
-// تشفير الرقم الوطني لضمان الخصوصية ومنع تكرار الحسابات
+// مسارات ملفات الواجهة الأمامية من المجلد الرئيسي
+app.use(express.static(path.join(__dirname, '.')));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// تشفير الرقم الوطني
 function hashNationalId(id) {
   return crypto.createHash('sha256').update(id.trim()).digest('hex');
 }
 
-// وسيط التحقق من تسجيل دخول المستخدم
+// وسيط التحقق من تسجيل الدخول
 async function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  const token = authHeader && authHeader.split(' ');
   if (!token) return res.status(401).json({ error: 'يرجى تسجيل الدخول أولاً' });
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
@@ -102,7 +107,7 @@ async function authenticateToken(req, res, next) {
   });
 }
 
-// تجهيز المهام الافتراضية عند بدء التشغيل
+// تهيئة المهام التجريبية
 async function initSampleTasks() {
   try {
     const taskCount = await redis.scard('active_task_ids');
@@ -165,7 +170,7 @@ app.post('/api/register', upload.fields([{ name: 'id_card', maxCount: 1 }, { nam
 
     const isPhoneTaken = await redis.hexists('users_by_phone', phone.trim());
     if (isPhoneTaken) {
-      return res.status(400).json({ error: 'رقم الهاتف هذا مستخدم مسبقاً.' });
+      return res.status(400).json({ error: 'رقم الهاتف مستخدم مسبقاً.' });
     }
 
     const userId = crypto.randomUUID();
@@ -487,3 +492,4 @@ app.post('/api/telegram-webhook', async (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+    
