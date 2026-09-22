@@ -4,41 +4,52 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>أربح من بيتك - منصة المهام والأرباح</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Tajawal', sans-serif; }
+    .card-glow { box-shadow: 0 0 0 1px rgba(245,158,11,0.08), 0 10px 30px -12px rgba(0,0,0,0.5); }
+    .fade-in { animation: fadeIn .35s ease both; }
+    @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
+    .skeleton { background: linear-gradient(90deg, #1e293b 25%, #273549 37%, #1e293b 63%); background-size: 400% 100%; animation: skeleton 1.4s ease infinite; }
+    @keyframes skeleton { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+  </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen">
 
-  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
+  <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 sticky top-0 z-50">
     <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <span class="text-2xl">💰</span>
-        <span class="font-bold text-lg text-amber-400">أربح من بيتك</span>
+        <span class="font-black text-lg bg-gradient-to-l from-amber-300 to-amber-500 bg-clip-text text-transparent">أربح من بيتك</span>
       </div>
-      <div id="userHeaderInfo" class="hidden flex items-center gap-3">
-        <span class="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-full font-bold">
+      <div id="userHeaderInfo" class="hidden items-center gap-3">
+        <span class="text-xs bg-amber-500/15 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-full font-bold">
           الرصيد: <span id="headerBalance">0</span> ل.س
         </span>
-        <button onclick="logout()" class="text-xs text-rose-400 hover:underline">خروج</button>
+        <button onclick="logout()" class="text-xs text-rose-400 hover:text-rose-300 hover:underline transition">خروج</button>
       </div>
     </div>
   </header>
 
   <main class="max-w-xl mx-auto px-4 py-8">
-    
+
     <div id="authSection">
       <div class="flex border-b border-slate-800 mb-6">
-        <button onclick="switchTab('register')" id="tabRegisterBtn" class="flex-1 pb-3 text-sm font-semibold border-b-2 border-amber-500 text-amber-400">حساب جديد وتحقق</button>
-        <button onclick="switchTab('login')" id="tabLoginBtn" class="flex-1 pb-3 text-sm font-semibold text-slate-400 border-b-2 border-transparent">تسجيل الدخول</button>
+        <button onclick="switchTab('register')" id="tabRegisterBtn" class="flex-1 pb-3 text-sm font-semibold border-b-2 border-amber-500 text-amber-400 transition">حساب جديد وتحقق</button>
+        <button onclick="switchTab('login')" id="tabLoginBtn" class="flex-1 pb-3 text-sm font-semibold text-slate-400 border-b-2 border-transparent transition">تسجيل الدخول</button>
       </div>
 
-      <div id="registerTab" class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-lg">
+      <div id="registerTab" class="bg-slate-900 p-6 rounded-2xl border border-slate-800 card-glow">
         <div class="bg-amber-950/40 border border-amber-600/40 rounded-xl p-4 mb-5">
           <div class="flex items-start gap-2">
             <span class="text-amber-400">🛡️</span>
             <div>
               <h2 class="text-amber-300 font-bold text-xs">ضمان النزاهة ومنع التعدد</h2>
               <p class="text-slate-300 text-xs mt-1 leading-relaxed">
-                يطلب الموقع صور الهوية لمرة واحدة لضمان عدم إنشاء أكثر من حساب للشخص الواحد. بياناتك مشفرة وتدقق يدوياً لمطابقة الحساب فقط.
+                يطلب الموقع صور الهوية لمرة واحدة لضمان عدم إنشاء أكثر من حساب للشخص الواحد. بياناتك مشفرة وتُدقق يدوياً لمطابقة الحساب فقط.
               </p>
             </div>
           </div>
@@ -47,56 +58,61 @@
         <form id="registerForm" class="space-y-4">
           <div>
             <label class="block text-xs text-slate-300 mb-1">الاسم الكامل</label>
-            <input type="text" name="username" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-amber-500 focus:outline-none">
+            <input type="text" name="username" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm focus:border-amber-500 focus:outline-none transition">
           </div>
           <div>
             <label class="block text-xs text-slate-300 mb-1">رقم الهاتف (سيريتل أو MTN)</label>
-            <input type="tel" name="phone" placeholder="09xxxxxxxx" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-amber-500 focus:outline-none">
+            <input type="tel" name="phone" placeholder="09xxxxxxxx" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm focus:border-amber-500 focus:outline-none transition">
           </div>
           <div>
             <label class="block text-xs text-slate-300 mb-1">الرقم الوطني (11 خانة)</label>
-            <input type="text" name="national_id" maxlength="11" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-amber-500 focus:outline-none">
+            <input type="text" name="national_id" inputmode="numeric" maxlength="11" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm focus:border-amber-500 focus:outline-none transition">
           </div>
           <div>
-            <label class="block text-xs text-slate-300 mb-1">كلمة المرور</label>
-            <input type="password" name="password" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-amber-500 focus:outline-none">
+            <label class="block text-xs text-slate-300 mb-1">كلمة المرور (6 خانات على الأقل)</label>
+            <div class="relative">
+              <input type="password" name="password" minlength="6" required id="regPassword" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm focus:border-amber-500 focus:outline-none transition pl-10">
+              <button type="button" onclick="togglePwd('regPassword', this)" class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs">👁️</button>
+            </div>
           </div>
 
-          <!-- رفع الصور الثلاث -->
           <div class="space-y-3 pt-2">
-            <div class="border border-dashed border-slate-700 rounded-lg p-3 text-center">
+            <div class="border border-dashed border-slate-700 rounded-lg p-3 text-center hover:border-amber-600/50 transition">
               <span class="block text-xs font-semibold mb-1 text-amber-300">1. صورة الهوية (الوجه الأمامي)</span>
-              <input type="file" name="id_front" accept="image/*" required class="text-xs text-slate-400 w-full file:bg-amber-600 file:text-white file:border-0 file:rounded file:px-2 file:py-1">
+              <input type="file" name="id_front" accept="image/*" required class="text-xs text-slate-400 w-full file:bg-amber-600 file:text-white file:border-0 file:rounded file:px-2 file:py-1 file:cursor-pointer">
             </div>
 
-            <div class="border border-dashed border-slate-700 rounded-lg p-3 text-center">
+            <div class="border border-dashed border-slate-700 rounded-lg p-3 text-center hover:border-amber-600/50 transition">
               <span class="block text-xs font-semibold mb-1 text-amber-300">2. صورة الهوية (الوجه الخلفي)</span>
-              <input type="file" name="id_back" accept="image/*" required class="text-xs text-slate-400 w-full file:bg-amber-600 file:text-white file:border-0 file:rounded file:px-2 file:py-1">
+              <input type="file" name="id_back" accept="image/*" required class="text-xs text-slate-400 w-full file:bg-amber-600 file:text-white file:border-0 file:rounded file:px-2 file:py-1 file:cursor-pointer">
             </div>
 
-            <div class="border border-dashed border-slate-700 rounded-lg p-3 text-center">
+            <div class="border border-dashed border-slate-700 rounded-lg p-3 text-center hover:border-amber-600/50 transition">
               <span class="block text-xs font-semibold mb-1 text-amber-300">3. صورة سيلفي مع الهوية للمطابقة</span>
-              <input type="file" name="selfie" accept="image/*" required class="text-xs text-slate-400 w-full file:bg-amber-600 file:text-white file:border-0 file:rounded file:px-2 file:py-1">
+              <input type="file" name="selfie" accept="image/*" required class="text-xs text-slate-400 w-full file:bg-amber-600 file:text-white file:border-0 file:rounded file:px-2 file:py-1 file:cursor-pointer">
             </div>
           </div>
 
-          <button type="submit" id="regBtn" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2.5 rounded-lg text-sm transition mt-4">
+          <button type="submit" id="regBtn" class="w-full bg-gradient-to-l from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold py-3 rounded-lg text-sm transition mt-4 shadow-lg shadow-amber-900/30">
             إرسال طلب الانضمام
           </button>
         </form>
       </div>
 
-      <div id="loginTab" class="hidden bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-lg">
+      <div id="loginTab" class="hidden bg-slate-900 p-6 rounded-2xl border border-slate-800 card-glow">
         <form id="loginForm" class="space-y-4">
           <div>
             <label class="block text-xs text-slate-300 mb-1">رقم الهاتف</label>
-            <input type="tel" name="phone" placeholder="09xxxxxxxx" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-amber-500 focus:outline-none">
+            <input type="tel" name="phone" placeholder="09xxxxxxxx" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm focus:border-amber-500 focus:outline-none transition">
           </div>
           <div>
             <label class="block text-xs text-slate-300 mb-1">كلمة المرور</label>
-            <input type="password" name="password" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-amber-500 focus:outline-none">
+            <div class="relative">
+              <input type="password" name="password" required id="loginPassword" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm focus:border-amber-500 focus:outline-none transition pl-10">
+              <button type="button" onclick="togglePwd('loginPassword', this)" class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs">👁️</button>
+            </div>
           </div>
-          <button type="submit" id="loginBtn" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2.5 rounded-lg text-sm transition mt-4">
+          <button type="submit" id="loginBtn" class="w-full bg-gradient-to-l from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-bold py-3 rounded-lg text-sm transition mt-4 shadow-lg shadow-amber-900/30">
             دخول إلى المنصة
           </button>
         </form>
@@ -104,15 +120,29 @@
     </div>
 
     <div id="dashboardSection" class="hidden space-y-6">
-      <div class="bg-gradient-to-r from-amber-950/40 to-slate-900 p-5 rounded-2xl border border-amber-600/30">
+      <div class="bg-gradient-to-br from-amber-950/50 via-slate-900 to-slate-900 p-5 rounded-2xl border border-amber-600/30 card-glow">
         <div class="flex justify-between items-center mb-4">
           <div>
             <span class="text-xs text-slate-400">رصيدك المتاح</span>
-            <h3 class="text-2xl font-black text-amber-400"><span id="dashBalance">0</span> <span class="text-sm font-normal">ل.س</span></h3>
+            <h3 class="text-3xl font-black text-amber-400 tracking-tight"><span id="dashBalance">0</span> <span class="text-sm font-normal text-slate-400">ل.س</span></h3>
           </div>
-          <button onclick="toggleWithdrawModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-4 py-2 rounded-lg transition">
+          <button onclick="toggleWithdrawModal()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-lg transition shadow">
             سحب الأرباح
           </button>
+        </div>
+        <div class="grid grid-cols-3 gap-2 pt-3 border-t border-amber-600/20">
+          <div class="text-center">
+            <div class="text-lg font-black text-emerald-400" id="statApproved">0</div>
+            <div class="text-[10px] text-slate-400">مهام مكتملة</div>
+          </div>
+          <div class="text-center">
+            <div class="text-lg font-black text-amber-300" id="statPending">0</div>
+            <div class="text-[10px] text-slate-400">قيد المراجعة</div>
+          </div>
+          <div class="text-center">
+            <div class="text-lg font-black text-slate-300" id="statAvailable">0</div>
+            <div class="text-[10px] text-slate-400">متاحة</div>
+          </div>
         </div>
       </div>
 
@@ -120,21 +150,28 @@
         <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
           <span>🎯</span> المهام المتاحة اليوم
         </h2>
+        <div id="tasksLoading" class="space-y-4">
+          <div class="skeleton h-24 rounded-xl"></div>
+          <div class="skeleton h-24 rounded-xl"></div>
+        </div>
         <div id="tasksList" class="space-y-4"></div>
+        <div id="tasksEmpty" class="hidden text-center text-slate-500 text-sm py-10 border border-dashed border-slate-800 rounded-xl">
+          لا توجد مهام متاحة حالياً — تابعنا لمعرفة المهام الجديدة.
+        </div>
       </div>
     </div>
 
     <div id="withdrawModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-      <div class="bg-slate-900 border border-slate-800 max-w-sm w-full p-6 rounded-2xl">
+      <div class="bg-slate-900 border border-slate-800 max-w-sm w-full p-6 rounded-2xl card-glow fade-in">
         <h3 class="font-bold text-base mb-4 text-amber-400">طلب سحب الأرباح</h3>
         <form id="withdrawForm" class="space-y-3">
           <div>
             <label class="block text-xs text-slate-300 mb-1">المبلغ المطلوب (ل.س)</label>
-            <input type="number" name="amount" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-amber-500">
+            <input type="number" name="amount" min="1" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm focus:border-amber-500">
           </div>
           <div>
             <label class="block text-xs text-slate-300 mb-1">طريقة الاستلام</label>
-            <select name="method" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-amber-500">
+            <select name="method" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm focus:border-amber-500">
               <option value="سيريتل كاش (Syriatel Cash)">سيريتل كاش</option>
               <option value="إم تي إن كاش (MTN Cash)">MTN كاش</option>
               <option value="حوالة الهرم / الفؤاد">حوالة الهرم / الفؤاد</option>
@@ -143,17 +180,17 @@
           </div>
           <div>
             <label class="block text-xs text-slate-300 mb-1">رقم الحساب / المحفظة / اسم المستلم</label>
-            <input type="text" name="destination" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:border-amber-500">
+            <input type="text" name="destination" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm focus:border-amber-500">
           </div>
           <div class="flex gap-2 pt-2">
-            <button type="submit" class="flex-1 bg-amber-500 text-slate-950 font-bold py-2 rounded-lg text-xs">تأكيد السحب</button>
-            <button type="button" onclick="toggleWithdrawModal()" class="flex-1 bg-slate-800 text-slate-300 py-2 rounded-lg text-xs">إلغاء</button>
+            <button type="submit" id="withdrawBtn" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-lg text-xs transition">تأكيد السحب</button>
+            <button type="button" onclick="toggleWithdrawModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-lg text-xs transition">إلغاء</button>
           </div>
         </form>
       </div>
     </div>
 
-    <div id="alertBox" class="hidden mt-4 p-3 rounded-lg text-xs text-center"></div>
+    <div id="alertBox" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 mt-4 p-3 rounded-lg text-xs text-center z-50 fade-in max-w-sm w-[90%]"></div>
   </main>
 
   <script>
@@ -161,19 +198,26 @@
 
     function showAlert(msg, isSuccess = true) {
       const box = document.getElementById('alertBox');
-      box.className = `mt-4 p-3 rounded-lg text-xs text-center border ${
-        isSuccess ? 'bg-emerald-950/60 border-emerald-500 text-emerald-300' : 'bg-rose-950/60 border-rose-500 text-rose-300'
+      box.className = `fixed bottom-4 left-1/2 -translate-x-1/2 p-3 rounded-lg text-xs text-center z-50 fade-in max-w-sm w-[90%] border shadow-lg ${
+        isSuccess ? 'bg-emerald-950/90 border-emerald-500 text-emerald-300' : 'bg-rose-950/90 border-rose-500 text-rose-300'
       }`;
       box.innerText = msg;
       box.classList.remove('hidden');
-      setTimeout(() => box.classList.add('hidden'), 6000);
+      setTimeout(() => box.classList.add('hidden'), 4000);
+    }
+
+    function togglePwd(id, btn) {
+      const input = document.getElementById(id);
+      const isPwd = input.type === 'password';
+      input.type = isPwd ? 'text' : 'password';
+      btn.textContent = isPwd ? '🙈' : '👁️';
     }
 
     function switchTab(tab) {
       document.getElementById('registerTab').classList.toggle('hidden', tab !== 'register');
       document.getElementById('loginTab').classList.toggle('hidden', tab !== 'login');
-      document.getElementById('tabRegisterBtn').className = tab === 'register' ? 'flex-1 pb-3 text-sm font-semibold border-b-2 border-amber-500 text-amber-400' : 'flex-1 pb-3 text-sm font-semibold text-slate-400 border-b-2 border-transparent';
-      document.getElementById('tabLoginBtn').className = tab === 'login' ? 'flex-1 pb-3 text-sm font-semibold border-b-2 border-amber-500 text-amber-400' : 'flex-1 pb-3 text-sm font-semibold text-slate-400 border-b-2 border-transparent';
+      document.getElementById('tabRegisterBtn').className = tab === 'register' ? 'flex-1 pb-3 text-sm font-semibold border-b-2 border-amber-500 text-amber-400 transition' : 'flex-1 pb-3 text-sm font-semibold text-slate-400 border-b-2 border-transparent transition';
+      document.getElementById('tabLoginBtn').className = tab === 'login' ? 'flex-1 pb-3 text-sm font-semibold border-b-2 border-amber-500 text-amber-400 transition' : 'flex-1 pb-3 text-sm font-semibold text-slate-400 border-b-2 border-transparent transition';
     }
 
     function toggleWithdrawModal() {
@@ -190,6 +234,7 @@
           document.getElementById('dashBalance').innerText = data.balance.toLocaleString();
           document.getElementById('authSection').classList.add('hidden');
           document.getElementById('userHeaderInfo').classList.remove('hidden');
+          document.getElementById('userHeaderInfo').classList.add('flex');
           document.getElementById('dashboardSection').classList.remove('hidden');
           loadTasks();
         } else {
@@ -200,45 +245,107 @@
       }
     }
 
+    function statusBadge(status) {
+      const map = {
+        pending: { text: '⏳ قيد المراجعة', cls: 'bg-amber-400/10 text-amber-300 border-amber-400/30' },
+        approved: { text: '✅ تم القبول وإضافة المكافأة', cls: 'bg-emerald-400/10 text-emerald-300 border-emerald-400/30' },
+        rejected: { text: '❌ تم رفض الإثبات — يمكنك إعادة المحاولة', cls: 'bg-rose-400/10 text-rose-300 border-rose-400/30' },
+      };
+      return map[status];
+    }
+
     async function loadTasks() {
-      const res = await fetch('/api/tasks', { headers: { 'Authorization': `Bearer ${token}` } });
-      const tasks = await res.json();
+      const loadingEl = document.getElementById('tasksLoading');
+      const emptyEl = document.getElementById('tasksEmpty');
       const list = document.getElementById('tasksList');
+      loadingEl.classList.remove('hidden');
+      emptyEl.classList.add('hidden');
       list.innerHTML = '';
 
-      tasks.forEach(t => {
-        const div = document.createElement('div');
-        div.className = 'bg-slate-900 border border-slate-800 p-4 rounded-xl flex flex-col gap-3';
-        div.innerHTML = `
-          <div class="flex justify-between items-start">
-            <div>
-              <h4 class="font-bold text-sm text-slate-200">${t.title}</h4>
-              <p class="text-xs text-slate-400 mt-1">${t.description}</p>
+      try {
+        const res = await fetch('/api/tasks', { headers: { 'Authorization': `Bearer ${token}` } });
+        const tasks = await res.json();
+        loadingEl.classList.add('hidden');
+
+        if (!Array.isArray(tasks) || tasks.length === 0) {
+          emptyEl.classList.remove('hidden');
+          updateStats([]);
+          return;
+        }
+
+        tasks.forEach((t, i) => {
+          const div = document.createElement('div');
+          div.className = 'bg-slate-900 border border-slate-800 p-4 rounded-xl flex flex-col gap-3 fade-in hover:border-slate-700 transition';
+          div.style.animationDelay = `${i * 40}ms`;
+
+          const badge = statusBadge(t.status);
+          const bodyHtml = `
+            <div class="flex justify-between items-start gap-3">
+              <div>
+                <h4 class="font-bold text-sm text-slate-200">${t.title}</h4>
+                <p class="text-xs text-slate-400 mt-1">${t.description}</p>
+              </div>
+              <span class="text-xs font-bold text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-md border border-amber-400/20 whitespace-nowrap">${parseInt(t.reward).toLocaleString()} ل.س</span>
             </div>
-            <span class="text-xs font-bold text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-md border border-amber-400/20">${parseInt(t.reward).toLocaleString()} ل.س</span>
-          </div>
-          <form onsubmit="submitTaskProof(event, '${t.id}', '${t.proof_type}')" class="border-t border-slate-800/80 pt-3 flex items-center gap-2">
-            ${t.proof_type === 'screenshot' 
-              ? `<input type="file" name="screenshot" accept="image/*" required class="text-xs text-slate-400 file:bg-slate-800 file:text-slate-300 file:border-0 file:rounded file:px-2 file:py-1 flex-1">`
-              : `<input type="text" name="proof_text" placeholder="ضع رابط الإثبات هنا" required class="flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs">`}
-            <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 py-1 rounded text-xs">إرسال</button>
-          </form>
-        `;
-        list.appendChild(div);
-      });
+          `;
+
+          if (badge) {
+            div.innerHTML = bodyHtml + `
+              <div class="border-t border-slate-800/80 pt-3">
+                <span class="inline-block text-[11px] font-semibold px-2.5 py-1 rounded-md border ${badge.cls}">${badge.text}</span>
+              </div>
+            `;
+          } else {
+            div.innerHTML = bodyHtml + `
+              <form onsubmit="submitTaskProof(event, '${t.id}', '${t.proof_type}')" class="border-t border-slate-800/80 pt-3 flex items-center gap-2">
+                ${t.proof_type === 'screenshot'
+                  ? `<input type="file" name="screenshot" accept="image/*" required class="text-xs text-slate-400 file:bg-slate-800 file:text-slate-300 file:border-0 file:rounded file:px-2 file:py-1 file:cursor-pointer flex-1">`
+                  : `<input type="text" name="proof_text" placeholder="ضع رابط الإثبات هنا" required class="flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs focus:border-amber-500 focus:outline-none">`}
+                <button type="submit" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded text-xs transition whitespace-nowrap">إرسال</button>
+              </form>
+            `;
+          }
+          list.appendChild(div);
+        });
+
+        updateStats(tasks);
+      } catch (e) {
+        loadingEl.classList.add('hidden');
+        showAlert('تعذر تحميل المهام، حاول تحديث الصفحة', false);
+      }
+    }
+
+    function updateStats(tasks) {
+      const approved = tasks.filter(t => t.status === 'approved').length;
+      const pending = tasks.filter(t => t.status === 'pending').length;
+      const available = tasks.filter(t => !t.status || t.status === 'available' || t.status === 'rejected').length;
+      document.getElementById('statApproved').innerText = approved;
+      document.getElementById('statPending').innerText = pending;
+      document.getElementById('statAvailable').innerText = available;
     }
 
     async function submitTaskProof(e, taskId, proofType) {
       e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      const originalText = btn.innerText;
+      btn.disabled = true;
+      btn.innerText = '...جاري الإرسال';
       const formData = new FormData(e.target);
-      const res = await fetch(`/api/tasks/${taskId}/submit`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData,
-      });
-      const data = await res.json();
-      showAlert(data.message || data.error, res.ok);
-      if (res.ok) e.target.reset();
+      try {
+        const res = await fetch(`/api/tasks/${taskId}/submit`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData,
+        });
+        const data = await res.json();
+        showAlert(data.message || data.error, res.ok);
+        if (res.ok) loadTasks();
+      } catch (err) {
+        showAlert('تعذر الاتصال بالخادم', false);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = originalText;
+      }
     }
 
     document.getElementById('registerForm').addEventListener('submit', async (e) => {
@@ -262,35 +369,56 @@
 
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const formData = new FormData(e.target);
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.fromEntries(formData)),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        localStorage.setItem('token', data.token);
-        token = data.token;
-        loadUserData();
-      } else {
-        showAlert(data.error, false);
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      btn.innerText = '...جاري الدخول';
+      try {
+        const formData = new FormData(e.target);
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(Object.fromEntries(formData)),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          localStorage.setItem('token', data.token);
+          token = data.token;
+          loadUserData();
+        } else {
+          showAlert(data.error, false);
+        }
+      } catch (err) {
+        showAlert('تعذر الاتصال بالخادم', false);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'دخول إلى المنصة';
       }
     });
 
     document.getElementById('withdrawForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const formData = new FormData(e.target);
-      const res = await fetch('/api/withdraw', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(Object.fromEntries(formData)),
-      });
-      const data = await res.json();
-      showAlert(data.message || data.error, res.ok);
-      if (res.ok) {
-        toggleWithdrawModal();
-        loadUserData();
+      const btn = document.getElementById('withdrawBtn');
+      btn.disabled = true;
+      btn.innerText = '...جاري الإرسال';
+      try {
+        const formData = new FormData(e.target);
+        const res = await fetch('/api/withdraw', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(Object.fromEntries(formData)),
+        });
+        const data = await res.json();
+        showAlert(data.message || data.error, res.ok);
+        if (res.ok) {
+          toggleWithdrawModal();
+          e.target.reset();
+          loadUserData();
+        }
+      } catch (err) {
+        showAlert('تعذر الاتصال بالخادم', false);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'تأكيد السحب';
       }
     });
 
@@ -302,5 +430,4 @@
     if (token) loadUserData();
   </script>
 </body>
-  </html>
-        
+</html>

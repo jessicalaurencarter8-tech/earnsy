@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>أربح من بيتك - منصة المهام والأرباح</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F7F4EC; --paper-alt:#EFEADC; --ink:#1C2B22; --ink-soft:#5B6B60;
+    --green:#1F5D3C; --green-deep:#153F29; --green-soft:#2F7A52; --green-chip:#E4EEE3;
+    --gold:#9C712C; --gold-soft:#C89B52; --gold-chip:#F4E9D3;
+    --line:#DAD3C1; --brick:#A23F35; --brick-chip:#F5E2DE;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:'Tajawal',sans-serif; min-height:100vh;}
+  .wrap{max-width:460px; margin:0 auto; padding:0 18px 60px;}
+
+  header.topbar{
+    background:var(--paper); border-bottom:1.5px solid var(--ink); position:sticky; top:0; z-index:40;
+  }
+  .topbar-inner{max-width:460px; margin:0 auto; padding:16px 18px; display:flex; align-items:center; justify-content:space-between;}
+  .brand{display:flex; align-items:center; gap:8px;}
+  .brand-mark{font-size:22px;}
+  .brand-name{font-weight:900; font-size:17px; letter-spacing:.2px;}
+  .head-balance{display:none; align-items:center; gap:12px;}
+  .head-balance.show{display:flex;}
+  .balance-chip{
+    font-size:12px; font-weight:700; border:1.5px solid var(--green); color:var(--green-deep);
+    padding:5px 12px; border-radius:20px; background:var(--green-chip);
+    font-variant-numeric:tabular-nums;
+  }
+  .link-btn{background:none; border:none; color:var(--brick); font-size:12px; font-weight:700; cursor:pointer; padding:0;}
+  .link-btn:hover{text-decoration:underline;}
+
+  main{padding-top:28px;}
+
+  .tabs{display:flex; border-bottom:1.5px solid var(--line); margin-bottom:22px;}
+  .tab-btn{flex:1; background:none; border:none; border-bottom:3px solid transparent; padding:10px 4px 14px;
+    font-family:inherit; font-size:14px; font-weight:700; color:var(--ink-soft); cursor:pointer; transition:color .15s;}
+  .tab-btn.active{color:var(--green-deep); border-bottom-color:var(--green);}
+
+  .panel{background:var(--paper-alt); border:1px solid var(--line); border-radius:10px; padding:22px 20px;}
+  .panel + .panel{margin-top:16px;}
+  .hidden{display:none !important;}
+
+  .trust-note{display:flex; gap:10px; border:1px dashed var(--green-soft); background:var(--green-chip);
+    border-radius:8px; padding:12px 14px; margin-bottom:20px;}
+  .trust-note .mark{color:var(--green-deep); font-size:16px; line-height:1;}
+  .trust-note h2{margin:0 0 4px; font-size:12px; color:var(--green-deep); font-weight:700;}
+  .trust-note p{margin:0; font-size:12px; color:var(--ink-soft); line-height:1.6;}
+
+  .field{margin-bottom:18px;}
+  .field label{display:block; font-size:12px; color:var(--ink-soft); margin-bottom:6px;}
+  .field .input-row{position:relative;}
+  .field input, .field select{
+    width:100%; border:none; border-bottom:1.5px solid var(--line); background:transparent;
+    padding:8px 30px 8px 2px; font-size:14px; color:var(--ink); font-family:inherit;
+  }
+  .field input:focus, .field select:focus{outline:none; border-bottom-color:var(--green);}
+  .eye-btn{position:absolute; left:0; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:13px;}
+
+  .upload-row{border:1px dashed var(--line); border-radius:8px; padding:13px; margin-bottom:11px;}
+  .upload-row .upload-title{display:flex; align-items:center; gap:7px; font-size:12px; font-weight:700; color:var(--green-deep); margin-bottom:7px;}
+  .upload-num{display:inline-flex; width:18px; height:18px; border-radius:50%; background:var(--green); color:#fff;
+    align-items:center; justify-content:center; font-size:10px; font-weight:700; flex:none;}
+  .upload-row input[type=file]{font-size:11px; color:var(--ink-soft); width:100%;}
+  .upload-row input[type=file]::file-selector-button{
+    background:var(--ink); color:var(--paper); border:none; border-radius:5px; padding:5px 10px; font-size:11px; cursor:pointer; margin-left:8px;
+  }
+
+  .btn-primary{
+    width:100%; background:var(--green); color:#fff; border:none; border-radius:8px; padding:13px; font-family:inherit;
+    font-size:14px; font-weight:700; cursor:pointer; transition:background .15s;
+  }
+  .btn-primary:hover{background:var(--green-deep);}
+  .btn-primary:disabled{opacity:.6; cursor:default;}
+  .btn-ghost{
+    background:transparent; color:var(--ink-soft); border:1.5px solid var(--line); border-radius:8px;
+    padding:13px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer;
+  }
+
+  .ledger-card{border:1.5px solid var(--ink); border-radius:10px; padding:22px 20px; background:var(--paper-alt); margin-bottom:26px;}
+  .ledger-top{display:flex; align-items:center; justify-content:space-between; gap:14px;}
+  .seal{
+    border:2px solid var(--green); outline:1px dashed var(--green-soft); outline-offset:4px;
+    width:104px; height:104px; border-radius:50%; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; transform:rotate(-5deg); flex:none;
+  }
+  .seal-label{font-size:9px; color:var(--green-deep); font-weight:700;}
+  .seal-amount{font-size:19px; font-weight:900; color:var(--green-deep); font-variant-numeric:tabular-nums; line-height:1.2;}
+  .seal-unit{font-size:9px; color:var(--green-soft); font-weight:700;}
+  .withdraw-btn{
+    background:var(--gold); color:#fff; border:none; border-radius:20px; padding:10px 16px; font-family:inherit;
+    font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;
+  }
+  .withdraw-btn:hover{background:#7f5b22;}
+  .ledger-stats{display:flex; align-items:center; margin-top:18px; padding-top:16px; border-top:1px dashed var(--line);}
+  .stat{flex:1; text-align:center;}
+  .stat-num{display:block; font-size:18px; font-weight:900; font-variant-numeric:tabular-nums;}
+  .stat-label{display:block; font-size:10px; color:var(--ink-soft); margin-top:2px;}
+  .stat-divider{width:1px; height:26px; background:var(--line);}
+  #statApproved{color:var(--green);}
+  #statPending{color:var(--gold);}
+  #statAvailable{color:var(--ink-soft);}
+
+  .section-title{display:flex; align-items:center; gap:8px; font-size:15px; font-weight:900; margin:0 0 14px;}
+
+  .ticket{
+    background:var(--paper-alt); border:1px solid var(--line); border-radius:10px; padding:16px 16px 15px; margin-bottom:14px;
+  }
+  .ticket-line{display:flex; align-items:baseline; gap:8px;}
+  .ticket-title{font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60%;}
+  .ticket-leader{flex:1; border-bottom:2px dotted var(--line); margin-bottom:4px;}
+  .ticket-amount{font-weight:900; font-size:13px; color:var(--gold); white-space:nowrap; font-variant-numeric:tabular-nums;}
+  .ticket-desc{font-size:12px; color:var(--ink-soft); margin:6px 0 0; line-height:1.6;}
+  .ticket-perf{border-top:1.5px dashed var(--line); margin:13px 0 12px;}
+  .ticket-action{display:flex; gap:8px; align-items:center;}
+  .ticket-action input[type=text]{
+    flex:1; border:none; border-bottom:1.5px solid var(--line); background:transparent; padding:7px 2px;
+    font-size:12px; font-family:inherit; color:var(--ink);
+  }
+  .ticket-action input[type=text]:focus{outline:none; border-bottom-color:var(--green);}
+  .ticket-action input[type=file]{flex:1; font-size:11px; color:var(--ink-soft);}
+  .ticket-action input[type=file]::file-selector-button{
+    background:var(--ink); color:var(--paper); border:none; border-radius:5px; padding:5px 9px; font-size:10px; cursor:pointer; margin-left:6px;
+  }
+  .ticket-submit{
+    background:var(--green); color:#fff; border:none; border-radius:6px; padding:8px 14px; font-family:inherit;
+    font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;
+  }
+  .ticket-submit:disabled{opacity:.6;}
+
+  .status-stamp{
+    display:inline-flex; align-items:center; gap:6px; padding:6px 13px; border:2px solid currentColor;
+    border-radius:6px; font-weight:700; font-size:11.5px; transform:rotate(-1.5deg);
+  }
+  .status-pending{color:var(--gold);}
+  .status-approved{color:var(--green);}
+  .status-rejected{color:var(--brick);}
+
+  .skeleton{background:var(--paper-alt); border:1px dashed var(--line); border-radius:10px; height:88px; margin-bottom:14px; position:relative; overflow:hidden;}
+  .skeleton::after{content:''; position:absolute; inset:0; background:linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
+    animation:shimmer 1.3s infinite;}
+  @keyframes shimmer{from{transform:translateX(-100%);} to{transform:translateX(100%);}}
+
+  .empty-note{text-align:center; font-size:13px; color:var(--ink-soft); padding:36px 10px; border:1px dashed var(--line); border-radius:10px;}
+
+  .modal-overlay{position:fixed; inset:0; background:rgba(28,43,34,.55); display:flex; align-items:center; justify-content:center; padding:18px; z-index:50;}
+  .modal-box{background:var(--paper); border:1.5px solid var(--ink); border-radius:10px; padding:24px 22px; max-width:360px; width:100%;}
+  .modal-box h3{margin:0 0 16px; font-size:15px; font-weight:900; color:var(--green-deep);}
+  .modal-actions{display:flex; gap:8px; margin-top:6px;}
+  .modal-actions .btn-primary, .modal-actions .btn-ghost{flex:1; padding:11px;}
+
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:60; max-width:90%; width:340px;
+    border-radius:8px; padding:12px 16px; font-size:12.5px; text-align:center; border:1.5px solid; font-weight:700;
+  }
+  .toast.ok{background:var(--green-chip); border-color:var(--green); color:var(--green-deep);}
+  .toast.err{background:var(--brick-chip); border-color:var(--brick); color:var(--brick);}
+
+  @keyframes settle{from{opacity:0; transform:translateY(5px) scale(.98);} to{opacity:1; transform:translateY(0) scale(1);}}
+  .settle{animation:settle .25s ease both;}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="brand-mark">💰</span><span class="brand-name">أربح من بيتك</span></div>
+    <div class="head-balance" id="userHeaderInfo">
+      <span class="balance-chip">رصيدك: <span id="headerBalance">0</span> ل.س</span>
+      <button class="link-btn" onclick="logout()">خروج</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <main>
+
+    <div id="authSection">
+      <div class="tabs">
+        <button class="tab-btn active" id="tabRegisterBtn" onclick="switchTab('register')">حساب جديد وتحقق</button>
+        <button class="tab-btn" id="tabLoginBtn" onclick="switchTab('login')">تسجيل الدخول</button>
+      </div>
+
+      <div id="registerTab" class="panel">
+        <div class="trust-note">
+          <span class="mark">🛡️</span>
+          <div>
+            <h2>ضمان النزاهة ومنع التعدد</h2>
+            <p>يطلب الموقع صور الهوية لمرة واحدة لضمان عدم إنشاء أكثر من حساب للشخص الواحد. بياناتك مشفرة وتُدقق يدوياً لمطابقة الحساب فقط.</p>
+          </div>
+        </div>
+
+        <form id="registerForm">
+          <div class="field">
+            <label>الاسم الكامل</label>
+            <div class="input-row"><input type="text" name="username" required></div>
+          </div>
+          <div class="field">
+            <label>رقم الهاتف (سيريتل أو MTN)</label>
+            <div class="input-row"><input type="tel" name="phone" placeholder="09xxxxxxxx" required></div>
+          </div>
+          <div class="field">
+            <label>الرقم الوطني (11 خانة)</label>
+            <div class="input-row"><input type="text" name="national_id" inputmode="numeric" maxlength="11" required></div>
+          </div>
+          <div class="field">
+            <label>كلمة المرور (6 خانات على الأقل)</label>
+            <div class="input-row">
+              <input type="password" name="password" minlength="6" required id="regPassword">
+              <button type="button" class="eye-btn" onclick="togglePwd('regPassword', this)">👁️</button>
+            </div>
+          </div>
+
+          <div class="upload-row">
+            <div class="upload-title"><span class="upload-num">1</span>صورة الهوية (الوجه الأمامي)</div>
+            <input type="file" name="id_front" accept="image/*" required>
+          </div>
+          <div class="upload-row">
+            <div class="upload-title"><span class="upload-num">2</span>صورة الهوية (الوجه الخلفي)</div>
+            <input type="file" name="id_back" accept="image/*" required>
+          </div>
+          <div class="upload-row">
+            <div class="upload-title"><span class="upload-num">3</span>صورة سيلفي مع الهوية للمطابقة</div>
+            <input type="file" name="selfie" accept="image/*" required>
+          </div>
+
+          <button type="submit" id="regBtn" class="btn-primary" style="margin-top:6px;">إرسال طلب الانضمام</button>
+        </form>
+      </div>
+
+      <div id="loginTab" class="panel hidden">
+        <form id="loginForm">
+          <div class="field">
+            <label>رقم الهاتف</label>
+            <div class="input-row"><input type="tel" name="phone" placeholder="09xxxxxxxx" required></div>
+          </div>
+          <div class="field">
+            <label>كلمة المرور</label>
+            <div class="input-row">
+              <input type="password" name="password" required id="loginPassword">
+              <button type="button" class="eye-btn" onclick="togglePwd('loginPassword', this)">👁️</button>
+            </div>
+          </div>
+          <button type="submit" id="loginBtn" class="btn-primary">دخول إلى المنصة</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="dashboardSection" class="hidden">
+      <div class="ledger-card">
+        <div class="ledger-top">
+          <div class="seal">
+            <span class="seal-label">رصيدك</span>
+            <span class="seal-amount" id="dashBalance">0</span>
+            <span class="seal-unit">ليرة سورية</span>
+          </div>
+          <button class="withdraw-btn" onclick="toggleWithdrawModal()">سحب الأرباح</button>
+        </div>
+        <div class="ledger-stats">
+          <div class="stat"><span class="stat-num" id="statApproved">0</span><span class="stat-label">مكتملة</span></div>
+          <div class="stat-divider"></div>
+          <div class="stat"><span class="stat-num" id="statPending">0</span><span class="stat-label">قيد المراجعة</span></div>
+          <div class="stat-divider"></div>
+          <div class="stat"><span class="stat-num" id="statAvailable">0</span><span class="stat-label">متاحة</span></div>
+        </div>
+      </div>
+
+      <h2 class="section-title"><span>🎯</span> المهام المتاحة اليوم</h2>
+      <div id="tasksLoading">
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+      </div>
+      <div id="tasksList"></div>
+      <div id="tasksEmpty" class="empty-note hidden">لا توجد مهام متاحة حالياً — تابعنا لمعرفة المهام الجديدة.</div>
+    </div>
+
+  </main>
+</div>
+
+<div id="withdrawModal" class="modal-overlay hidden">
+  <div class="modal-box settle">
+    <h3>طلب سحب الأرباح</h3>
+    <form id="withdrawForm">
+      <div class="field">
+        <label>المبلغ المطلوب (ل.س)</label>
+        <div class="input-row"><input type="number" name="amount" min="1" required></div>
+      </div>
+      <div class="field">
+        <label>طريقة الاستلام</label>
+        <div class="input-row">
+          <select name="method">
+            <option value="سيريتل كاش (Syriatel Cash)">سيريتل كاش</option>
+            <option value="إم تي إن كاش (MTN Cash)">MTN كاش</option>
+            <option value="حوالة الهرم / الفؤاد">حوالة الهرم / الفؤاد</option>
+            <option value="USDT (TRC20)">USDT (TRC20)</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>رقم الحساب / المحفظة / اسم المستلم</label>
+        <div class="input-row"><input type="text" name="destination" required></div>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" id="withdrawBtn" class="btn-primary">تأكيد السحب</button>
+        <button type="button" class="btn-ghost" onclick="toggleWithdrawModal()">إلغاء</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="alertBox" class="toast hidden"></div>
+
+<script>
+  let token = localStorage.getItem('token');
+
+  function showAlert(msg, isSuccess = true) {
+    const box = document.getElementById('alertBox');
+    box.className = `toast settle ${isSuccess ? 'ok' : 'err'}`;
+    box.innerText = msg;
+    setTimeout(() => box.classList.add('hidden'), 4000);
+  }
+
+  function togglePwd(id, btn) {
+    const input = document.getElementById(id);
+    const isPwd = input.type === 'password';
+    input.type = isPwd ? 'text' : 'password';
+    btn.textContent = isPwd ? '🙈' : '👁️';
+  }
+
+  function switchTab(tab) {
+    document.getElementById('registerTab').classList.toggle('hidden', tab !== 'register');
+    document.getElementById('loginTab').classList.toggle('hidden', tab !== 'login');
+    document.getElementById('tabRegisterBtn').classList.toggle('active', tab === 'register');
+    document.getElementById('tabLoginBtn').classList.toggle('active', tab === 'login');
+  }
+
+  function toggleWithdrawModal() {
+    document.getElementById('withdrawModal').classList.toggle('hidden');
+  }
+
+  async function loadUserData() {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/me', { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        document.getElementById('headerBalance').innerText = data.balance.toLocaleString();
+        document.getElementById('dashBalance').innerText = data.balance.toLocaleString();
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('userHeaderInfo').classList.add('show');
+        document.getElementById('dashboardSection').classList.remove('hidden');
+        loadTasks();
+      } else {
+        logout();
+      }
+    } catch (e) {
+      logout();
+    }
+  }
+
+  function statusMeta(status) {
+    const map = {
+      pending: { text: '⏳ قيد المراجعة', cls: 'status-pending' },
+      approved: { text: '✅ تم القبول وإضافة المكافأة', cls: 'status-approved' },
+      rejected: { text: '❌ مرفوضة — يمكنك إعادة المحاولة', cls: 'status-rejected' },
+    };
+    return map[status];
+  }
+
+  async function loadTasks() {
+    const loadingEl = document.getElementById('tasksLoading');
+    const emptyEl = document.getElementById('tasksEmpty');
+    const list = document.getElementById('tasksList');
+    loadingEl.classList.remove('hidden');
+    emptyEl.classList.add('hidden');
+    list.innerHTML = '';
+
+    try {
+      const res = await fetch('/api/tasks', { headers: { 'Authorization': `Bearer ${token}` } });
+      const tasks = await res.json();
+      loadingEl.classList.add('hidden');
+
+      if (!Array.isArray(tasks) || tasks.length === 0) {
+        emptyEl.classList.remove('hidden');
+        updateStats([]);
+        return;
+      }
+
+      tasks.forEach((t, i) => {
+        const div = document.createElement('article');
+        div.className = 'ticket settle';
+        div.style.animationDelay = `${i * 35}ms`;
+
+        const meta = statusMeta(t.status);
+        const head = `
+          <div class="ticket-line">
+            <span class="ticket-title">${t.title}</span>
+            <span class="ticket-leader"></span>
+            <span class="ticket-amount">${parseInt(t.reward).toLocaleString()} ل.س</span>
+          </div>
+          <p class="ticket-desc">${t.description}</p>
+          <div class="ticket-perf"></div>
+        `;
+
+        if (meta) {
+          div.innerHTML = head + `<span class="status-stamp ${meta.cls}">${meta.text}</span>`;
+        } else {
+          div.innerHTML = head + `
+            <form class="ticket-action" onsubmit="submitTaskProof(event, '${t.id}')">
+              ${t.proof_type === 'screenshot'
+                ? `<input type="file" name="screenshot" accept="image/*" required>`
+                : `<input type="text" name="proof_text" placeholder="ضع رابط الإثبات هنا" required>`}
+              <button type="submit" class="ticket-submit">إرسال</button>
+            </form>
+          `;
+        }
+        list.appendChild(div);
+      });
+
+      updateStats(tasks);
+    } catch (e) {
+      loadingEl.classList.add('hidden');
+      showAlert('تعذر تحميل المهام، حاول تحديث الصفحة', false);
+    }
+  }
+
+  function updateStats(tasks) {
+    document.getElementById('statApproved').innerText = tasks.filter(t => t.status === 'approved').length;
+    document.getElementById('statPending').innerText = tasks.filter(t => t.status === 'pending').length;
+    document.getElementById('statAvailable').innerText = tasks.filter(t => !t.status || t.status === 'available' || t.status === 'rejected').length;
+  }
+
+  async function submitTaskProof(e, taskId) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    const originalText = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = '...جاري الإرسال';
+    const formData = new FormData(e.target);
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/submit`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      showAlert(data.message || data.error, res.ok);
+      if (res.ok) loadTasks();
+    } catch (err) {
+      showAlert('تعذر الاتصال بالخادم', false);
+    } finally {
+      btn.disabled = false;
+      btn.innerText = originalText;
+    }
+  }
+
+  document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('regBtn');
+    btn.disabled = true;
+    btn.innerText = 'جاري الإرسال والمعالجة...';
+    try {
+      const res = await fetch('/api/register', { method: 'POST', body: new FormData(e.target) });
+      const data = await res.json();
+      showAlert(data.message || data.error, res.ok);
+      if (res.ok) e.target.reset();
+    } catch (err) {
+      showAlert('تعذر الاتصال بالخادم', false);
+    } finally {
+      btn.disabled = false;
+      btn.innerText = 'إرسال طلب الانضمام';
+    }
+  });
+
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    btn.innerText = '...جاري الدخول';
+    try {
+      const formData = new FormData(e.target);
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.fromEntries(formData)),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem('token', data.token);
+        token = data.token;
+        loadUserData();
+      } else {
+        showAlert(data.error, false);
+      }
+    } catch (err) {
+      showAlert('تعذر الاتصال بالخادم', false);
+    } finally {
+      btn.disabled = false;
+      btn.innerText = 'دخول إلى المنصة';
+    }
+  });
+
+  document.getElementById('withdrawForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('withdrawBtn');
+    btn.disabled = true;
+    btn.innerText = '...جاري الإرسال';
+    try {
+      const formData = new FormData(e.target);
+      const res = await fetch('/api/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(Object.fromEntries(formData)),
+      });
+      const data = await res.json();
+      showAlert(data.message || data.error, res.ok);
+      if (res.ok) {
+        toggleWithdrawModal();
+        e.target.reset();
+        loadUserData();
+      }
+    } catch (err) {
+      showAlert('تعذر الاتصال بالخادم', false);
+    } finally {
+      btn.disabled = false;
+      btn.innerText = 'تأكيد السحب';
+    }
+  });
+
+  function logout() {
+    localStorage.removeItem('token');
+    location.reload();
+  }
+
+  if (token) loadUserData();
+</script>
+</body>
+</html>

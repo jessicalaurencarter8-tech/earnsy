@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "منصة أربح من بيتك للمهام والمكافآت مع تحقق يدوي عبر تليجرام",
   "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node server.js"
   },
