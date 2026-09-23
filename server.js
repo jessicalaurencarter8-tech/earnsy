@@ -28,6 +28,8 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID;
 const TELEGRAM_WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
 const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
+// رابط قناة تليجرام الرسمية المستخدم في مهام الاشتراك والإعجاب
+const TELEGRAM_CHANNEL_URL = 'https://t.me/earnsy719';
 
 // إعداد الاتصال بقاعدة بيانات Upstash (مع مخزن مؤقت في الذاكرة للتطوير المحلي فقط)
 let redis;
@@ -179,16 +181,21 @@ async function initSampleTasks() {
       {
         id: 'task_telegram_sub',
         title: 'الاشتراك بقناة تليجرام الرسمية',
-        description: 'اشترك بالقناة وأرسل لقطة شاشة تؤكد اشتراكك.',
+        description: 'افتح القناة من الزر أدناه واضغط «اشتراك»، ثم أرسل لقطة شاشة تُظهر أنك مشترك.',
         reward: 50,
         proof_type: 'screenshot',
+        link: TELEGRAM_CHANNEL_URL,
+        link_label: 'فتح القناة والاشتراك',
       },
       {
         id: 'task_telegram_like',
         title: 'إعجاب على منشور في قناة تليجرام',
-        description: 'ضع إعجاب 👍 على آخر منشور بالقناة وأرسل لقطة شاشة تثبت ذلك.',
+        description: 'افتح القناة وضع تفاعل 👍 على المنشور الموضّح بالصورة أدناه، ثم أرسل لقطة شاشة تُظهر تفاعلك.',
         reward: 50,
         proof_type: 'screenshot',
+        link: TELEGRAM_CHANNEL_URL,
+        link_label: 'فتح القناة',
+        image_url: '/images/channel-post.jpg',
       },
     ];
     const desiredIds = desiredTasks.map((t) => t.id);
@@ -490,6 +497,14 @@ app.post('/api/tasks/:taskId/submit', authenticateToken, upload.single('screensh
     const currentStatus = await redis.hget(`user_tasks:${req.user.id}`, taskId);
     if (currentStatus === 'pending' || currentStatus === 'approved') {
       return res.status(400).json({ error: 'لقد قمت بإرسال إثبات لهذه المهمة مسبقاً.' });
+    }
+
+    // التأكد من وجود الإثبات المطلوب قبل إرساله للمراجعة
+    if (task.proof_type === 'screenshot' && !req.file) {
+      return res.status(400).json({ error: 'يرجى إرفاق لقطة الشاشة كإثبات.' });
+    }
+    if (task.proof_type === 'text_url' && !(proof_text && proof_text.trim())) {
+      return res.status(400).json({ error: 'يرجى إدخال الإثبات المطلوب.' });
     }
 
     const submissionId = crypto.randomUUID();
