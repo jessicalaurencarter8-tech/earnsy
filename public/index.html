@@ -245,6 +245,14 @@
   .ticket-amount{font-family:'Aref Ruqaa', serif; font-weight:700; font-size:15px; color:var(--gold-bright); white-space:nowrap; font-variant-numeric:tabular-nums; text-shadow:0 0 10px var(--gold-glow);}
   .ticket-desc{font-size:12px; color:var(--ink-soft); margin:6px 0 0; line-height:1.6;}
   .ticket-perf{border-top:1.5px dashed var(--line); margin:13px 0 12px;}
+  .ticket-media{display:block; width:100%; height:auto; margin-top:12px; border-radius:8px; border:1px solid var(--line); background:var(--panel);}
+  .ticket-link{
+    display:inline-flex; align-items:center; gap:6px; margin-top:12px; padding:8px 14px; border-radius:7px; text-decoration:none;
+    background:linear-gradient(180deg, var(--gold-bright), var(--gold)); color:#231a05; font-size:12px; font-weight:700;
+    box-shadow:0 4px 12px -4px var(--gold-glow);
+  }
+  .ticket-link:active{transform:scale(.97);}
+  .status-stamp + .ticket-action{margin-top:12px;}
   .ticket-action{display:flex; gap:8px; align-items:center;}
   .ticket-action input[type=text]{
     flex:1; border:none; border-bottom:1.5px solid var(--line); background:transparent; padding:7px 2px;
@@ -543,6 +551,14 @@
     }
   }
 
+  // يسمح فقط بروابط https أو مسارات داخلية من الموقع، ويحذف أي رموز قد تكسر الخاصية
+  function safeUrl(u) {
+    if (typeof u !== 'string') return '';
+    const v = u.trim();
+    if (!/^(https:\/\/|\/(?!\/))/.test(v)) return '';
+    return v.replace(/["'<>\s]/g, '');
+  }
+
   function statusMeta(status) {
     const map = {
       pending: { text: '⏳ قيد المراجعة', cls: 'status-pending' },
@@ -577,6 +593,14 @@
         div.style.animationDelay = `${i * 35}ms`;
 
         const meta = statusMeta(t.status);
+        // الصورة والرابط يظهران فقط عندما تكون المهمة قابلة للتنفيذ (متاحة أو مرفوضة)
+        const actionable = !t.status || t.status === 'available' || t.status === 'rejected';
+        const mediaUrl = safeUrl(t.image_url);
+        const linkUrl = safeUrl(t.link);
+        const media = actionable ? `
+          ${mediaUrl ? `<img class="ticket-media" src="${mediaUrl}" alt="المنشور المطلوب" loading="lazy">` : ''}
+          ${linkUrl ? `<a class="ticket-link" href="${linkUrl}" target="_blank" rel="noopener noreferrer">🔗 ${t.link_label || 'فتح الرابط'}</a>` : ''}
+        ` : '';
         const head = `
           <div class="ticket-line">
             <span class="ticket-title">${t.title}</span>
@@ -584,13 +608,10 @@
             <span class="ticket-amount">${parseInt(t.reward).toLocaleString()} ل.س</span>
           </div>
           <p class="ticket-desc">${t.description}</p>
+          ${media}
           <div class="ticket-perf"></div>
         `;
-
-        if (meta) {
-          div.innerHTML = head + `<span class="status-stamp ${meta.cls}">${meta.text}</span>`;
-        } else {
-          div.innerHTML = head + `
+        const form = `
             <form class="ticket-action" onsubmit="submitTaskProof(event, '${t.id}')">
               ${t.proof_type === 'screenshot'
                 ? `<input type="file" name="screenshot" accept="image/*" required>`
@@ -598,6 +619,14 @@
               <button type="submit" class="ticket-submit">إرسال</button>
             </form>
           `;
+
+        if (t.status === 'rejected') {
+          // المهمة المرفوضة: نعرض الحالة مع نموذج لإعادة المحاولة (كان النص يقول "يمكنك إعادة المحاولة" دون وجود نموذج)
+          div.innerHTML = head + `<span class="status-stamp ${meta.cls}">${meta.text}</span>` + form;
+        } else if (meta) {
+          div.innerHTML = head + `<span class="status-stamp ${meta.cls}">${meta.text}</span>`;
+        } else {
+          div.innerHTML = head + form;
         }
         list.appendChild(div);
       });
