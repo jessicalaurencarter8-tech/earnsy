@@ -168,36 +168,44 @@ function verifyTelegramWebhook(req, res, next) {
 // تهيئة المهام الافتراضية
 async function initSampleTasks() {
   try {
-    const taskCount = await redis.scard('active_task_ids');
-    if (taskCount === 0) {
-      const sampleTasks = [
-        {
-          id: 'task_1',
-          title: 'الانضمام إلى قناة تليجرام الرسمية',
-          description: 'انضم للقناة وخذ لقطة شاشة تؤكد انضمامك.',
-          reward: 100,
-          proof_type: 'screenshot',
-        },
-        {
-          id: 'task_2',
-          title: 'الاشتراك بقناة يوتيوب وتفعيل الجرس',
-          description: 'اشترك بالقناة وضع لايك على آخر فيديو وأرسل لقطة شاشة.',
-          reward: 100,
-          proof_type: 'screenshot',
-        },
-        {
-          id: 'task_3',
-          title: 'مشاركة رابط الموقع على فيسبوك',
-          description: 'انشر رابط الموقع في مجموعة وضع رابط المنشور كإثبات.',
-          reward: 100,
-          proof_type: 'text_url',
-        },
-      ];
+    const desiredTasks = [
+      {
+        id: 'task_invite3',
+        title: 'دعوة 3 أشخاص للانضمام إلى الموقع',
+        description: 'شارك رابط الموقع مع 3 أشخاص وخلّيهم يسجّلوا حساب جديد. أرسل كإثبات أسماء/أرقام هواتف من دعوتهم.',
+        reward: 100,
+        proof_type: 'text_url',
+      },
+      {
+        id: 'task_telegram_sub',
+        title: 'الاشتراك بقناة تليجرام الرسمية',
+        description: 'اشترك بالقناة وأرسل لقطة شاشة تؤكد اشتراكك.',
+        reward: 50,
+        proof_type: 'screenshot',
+      },
+      {
+        id: 'task_telegram_like',
+        title: 'إعجاب على منشور في قناة تليجرام',
+        description: 'ضع إعجاب 👍 على آخر منشور بالقناة وأرسل لقطة شاشة تثبت ذلك.',
+        reward: 50,
+        proof_type: 'screenshot',
+      },
+    ];
+    const desiredIds = desiredTasks.map((t) => t.id);
 
-      for (const t of sampleTasks) {
-        await redis.hset(`task:${t.id}`, t);
-        await redis.sadd('active_task_ids', t.id);
+    // حذف أي مهمة قديمة (بقيم خاطئة أو غير مرغوبة) غير موجودة بالقائمة الجديدة
+    const existingIds = await redis.smembers('active_task_ids');
+    for (const id of existingIds) {
+      if (!desiredIds.includes(id)) {
+        await redis.del(`task:${id}`);
+        await redis.srem('active_task_ids', id);
       }
+    }
+
+    // فرض القيم الصحيحة للمهام الثلاث دائماً، حتى لو كانت موجودة بقيم قديمة من قبل
+    for (const t of desiredTasks) {
+      await redis.hset(`task:${t.id}`, t);
+      await redis.sadd('active_task_ids', t.id);
     }
   } catch (err) {
     console.error('Task init error:', err);
